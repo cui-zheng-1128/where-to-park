@@ -75,7 +75,7 @@ Notes:
 
 ### Verifying a sandbox run
 
-Watch the steps go green, then verify the URLs from the step summary. A validated run stays in the Actions history: [Demo Sandbox, 2026-10-05](https://github.com/cui-zheng-1128/where-to-park/actions/runs/37359742483) — all steps green, live data for the five configured cities.
+Watch the steps go green, then verify the URLs from the step summary. A validated run stays in the Actions history: [Demo Sandbox](https://github.com/cui-zheng-1128/where-to-park/actions/runs/37379529679).
 
 | Check | Link | Expected |
 |---|---|---|
