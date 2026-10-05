@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: where-to-park
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: where-to-park
+  namespace: where-to-park
+  labels:
+    app: where-to-park
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: where-to-park
+  template:
+    metadata:
+      labels:
+        app: where-to-park
+    spec:
+      containers:
+        - name: api
+          # Local cluster (Rancher Desktop k3s, kind, minikube): build the image locally and never pull from a registry.
+          image: where-to-park:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prd
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: where-to-park
+  namespace: where-to-park
+spec:
+  # NodePort so a local cluster without a load balancer is reachable at http://localhost:30080.
+  type: NodePort
+  selector:
+    app: where-to-park
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080

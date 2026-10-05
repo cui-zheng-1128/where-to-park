@@ -1,0 +1,42 @@
+meta {
+  name: Nantes does not return Paris
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=47.2138&lon=-1.5536&radius=5000
+  body: none
+  auth: none
+}
+
+tests {
+  test("status 200", function() {
+    expect(res.status).to.eql(200);
+  });
+
+  test("only nantes data returned (no paris)", function() {
+    const results = res.getBody().results;
+    for (const p of results) {
+      // Should only return nantes or nantes-pr
+      expect(p.cityId).to.match(/^nantes(-pr)?$/);
+      // Should NOT return paris
+      expect(p.cityId).to.not.eql("paris");
+      expect(p.id).to.not.match(/^paris:/);
+    }
+  });
+
+  test("attribution only contains nantes cities", function() {
+    const attribution = res.getBody().attribution;
+    for (const a of attribution) {
+      expect(a.cityId).to.match(/^nantes(-pr)?$/);
+    }
+  });
+
+  test("distance makes sense (< 5km)", function() {
+    const results = res.getBody().results;
+    for (const p of results) {
+      expect(p.distanceMeters).to.be.at.most(5000);
+    }
+  });
+}

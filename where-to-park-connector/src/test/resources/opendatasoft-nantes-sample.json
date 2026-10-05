@@ -1,0 +1,42 @@
+{
+    "total_count": 3,
+    "results": [
+        {
+            "grp_identifiant": 2,
+            "grp_nom": "DECRE - BOUFFAY",
+            "grp_statut": 5,
+            "grp_disponible": 222,
+            "grp_exploitation": 394,
+            "grp_complet": 2,
+            "grp_horodatage": "2026-10-01T14:38:41+00:00",
+            "adresse": "Place du Bouffay",
+            "location": {
+                "lon": -1.5536062121547323,
+                "lat": 47.21383753673762
+            }
+        },
+        {
+            "grp_identifiant": 5,
+            "grp_nom": "ARISTIDE BRIAND",
+            "grp_statut": 5,
+            "grp_disponible": 0,
+            "grp_exploitation": 303,
+            "grp_complet": 2,
+            "grp_horodatage": "2026-10-01T14:38:41+00:00",
+            "adresse": "Place Aristide Briand",
+            "location": {
+                "lon": -1.5629364155817649,
+                "lat": 47.217093597901226
+            }
+        },
+        {
+            "grp_identifiant": 12,
+            "grp_nom": "NO_COORDS",
+            "grp_statut": 5,
+            "grp_disponible": 10,
+            "grp_exploitation": 100,
+            "grp_horodatage": "2026-10-01T14:38:41+00:00",
+            "adresse": "Somewhere"
+        }
+    ]
+}

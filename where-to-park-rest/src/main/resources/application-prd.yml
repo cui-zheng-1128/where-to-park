@@ -1,0 +1,9 @@
+# Production overrides. Activated with --spring.profiles.active=prd.
+spring:
+  datasource:
+    # in-Memory
+    url: jdbc:h2:mem:parkings
+  h2:
+    console:
+      # Never expose the database admin UI in production.
+      enabled: false

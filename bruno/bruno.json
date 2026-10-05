@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "where-to-park",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

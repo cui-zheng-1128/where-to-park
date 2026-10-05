@@ -1,0 +1,46 @@
+name: 🛠️ Build, Test and Publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build and test
+        run: mvn -B clean package
+
+      - name: Contract tests (bruno)
+        run: |
+          cd where-to-park-rest/target
+          java -Dfile.encoding=UTF-8 -jar where-to-park-rest-0.0.1-SNAPSHOT.jar &
+          APP_PID=$!
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:8080/actuator/health && break || sleep 1
+          done
+          npm install -g @usebruno/cli@4
+          # Wait until every city has ingested its first snapshot so the contract tests never race the warm-up poll.
+          ready=0
+          for i in $(seq 1 24); do
+            cities=$(curl -sf http://localhost:8080/v1/cities) || { sleep 5; continue; }
+            if grep -q '"parkingCount"' <<< "$cities" && ! grep -q '"parkingCount":0' <<< "$cities"; then
+              ready=1
+              break
+            fi
+            sleep 5
+          done
+          [ "$ready" -eq 1 ] || echo "::warning::Not all cities ingested data within 120s; contract tests will report what is missing."
+          # The CLI resolves the collection from the working directory, so run from inside bruno/.
+          cd "$GITHUB_WORKSPACE/bruno"
+          bru run --env local --reporter-junit "$GITHUB_WORKSPACE/bruno-results.xml"
+          kill $APP_PID

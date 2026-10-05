@@ -1,0 +1,7 @@
+.git
+.github
+_k8s
+bruno
+**/target
+*.md
+bruno-results.xml

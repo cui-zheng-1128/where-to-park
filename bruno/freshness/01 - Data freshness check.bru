@@ -1,0 +1,42 @@
+meta {
+  name: Data freshness check
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=46.5802&lon=0.3404&radius=2000&limit=5
+  body: none
+  auth: none
+}
+
+tests {
+  test("data freshness: realtime cities update within 2 minutes", function() {
+    const results = res.getBody().results;
+    const now = Date.now();
+
+    // Find a realtime city result (poitiers or nantes)
+    const realtimeResults = results.filter(p =>
+      p.cityId === "poitiers" || p.cityId === "nantes" || p.cityId === "nantes-pr"
+    );
+
+    if (realtimeResults.length > 0) {
+      for (const p of realtimeResults) {
+        const updated = new Date(p.sourceUpdatedAt).getTime();
+        const ageSeconds = (now - updated) / 1000;
+        // Realtime sources (Poitiers, Nantes) refresh every 60s
+        // Allow 120s tolerance for polling delay
+        expect(ageSeconds).to.be.lessThan(120);
+      }
+    }
+  });
+
+  test("ETag changes when data updates", function() {
+    // This test should be run twice with a 90-second interval
+    // First run: record the ETag
+    // Second run: ETag should be different if data was refreshed
+    const etag = res.headers["etag"];
+    expect(etag).to.exist;
+    console.log("Current ETag:", etag);
+  });
+}

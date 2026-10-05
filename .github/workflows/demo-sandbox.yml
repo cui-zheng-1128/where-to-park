@@ -1,0 +1,95 @@
+name: ▶️ Demo Sandbox
+
+# Spin up an ephemeral demo of this app on the Actions runner and expose it publicly for a limited time — no local cluster, no cloud account, no credentials.
+#
+# How it works:
+#   - k3d starts a throwaway K8s cluster inside the runner's Docker.
+#   - The image is built locally and loaded into k3d (no registry push/pull).
+#   - kubectl applies _k8s/deployment.yaml (namespace, deployment, NodePort).
+#   - cloudflared opens a free, account-less quick tunnel to localhost:30080 and prints a public https://*.trycloudflare.com URL into the step summary.
+#   - Everything is destroyed when the workflow ends (or hits the timeout).
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration-minutes:
+        description: How long the demo stays up before the workflow self-terminates
+        required: true
+        default: '30'
+        type: choice
+        options: ['15', '30', '45', '60']
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70   # hard ceiling; the app itself serves for duration-minutes
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t where-to-park:local .
+
+      - name: Start k3d cluster
+        uses: nolar/setup-k3d-k3s@v1
+        with:
+          version: latest
+          k3d-name: demo
+          # Publish the NodePort on the runner host so localhost:30080 reaches the app for the readiness checks and the tunnel.
+          k3d-args: "-p 30080:30080@server:0"
+
+      - name: Load image into k3d and deploy
+        run: |
+          k3d image import -c demo where-to-park:local
+          kubectl apply -f _k8s/deployment.yaml
+          kubectl rollout status deployment/where-to-park -n where-to-park --timeout=180s
+
+      - name: Wait for first ingestion cycle
+        run: |
+          for i in $(seq 1 20); do
+            count=$(curl -s http://localhost:30080/v1/cities | grep -o '"fresh":true' | wc -l)
+            [ "$count" -ge 3 ] && echo "Fresh data on $count cities" && break
+            sleep 6
+          done
+
+      - name: Expose via cloudflared quick tunnel
+        run: |
+          curl -fsSL -o /tmp/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          chmod +x /tmp/cloudflared
+          /tmp/cloudflared tunnel --no-autoupdate --url http://localhost:30080 > /tmp/tunnel.log 2>&1 &
+          for i in $(seq 1 30); do
+            url=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' /tmp/tunnel.log | head -1)
+            [ -n "$url" ] && break
+            sleep 2
+          done
+          [ -z "$url" ] && { echo "::error::No tunnel URL"; cat /tmp/tunnel.log; exit 1; }
+          echo "PUBLIC_URL=$url" >> "$GITHUB_ENV"
+          echo "$url" > /tmp/url.txt
+
+      - name: Publish demo link
+        run: |
+          {
+            echo "## 🚀 Demo is live"
+            echo ""
+            echo "**Public URL:** $PUBLIC_URL"
+            echo ""
+            echo "| Try | Link |"
+            echo "|---|---|"
+            echo "| Swagger UI | $PUBLIC_URL/swagger-ui.html |"
+            echo "| Cities (freshness) | $PUBLIC_URL/v1/cities |"
+            echo "| Poitiers nearby | $PUBLIC_URL/v1/parkings/nearby?lat=46.5802&lon=0.3404&radius=2000&limit=10 |"
+            echo "| Health | $PUBLIC_URL/actuator/health |"
+            echo ""
+            echo "Self-destructs in ${{ github.event.inputs.duration-minutes }} min, or when this run is cancelled."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep alive for the requested duration
+        run: |
+          secs=$(( ${{ github.event.inputs.duration-minutes }} * 60 ))
+          echo "Serving $PUBLIC_URL for ${{ github.event.inputs.duration-minutes }} minutes..."
+          sleep $secs
+
+      - name: Teardown
+        if: always()
+        run: |
+          pkill cloudflared || true
+          k3d cluster delete demo || true

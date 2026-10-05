@@ -1,0 +1,55 @@
+meta {
+  name: Toulouse (static capacity)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=43.6047&lon=1.4442&radius=2000&limit=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("status 200 and results present", function() {
+    expect(res.status).to.eql(200);
+    const results = res.getBody().results;
+    expect(results.length).to.be.greaterThan(0);
+  });
+
+  test("static data: no realtime availability", function() {
+    const results = res.getBody().results;
+    // Toulouse dataset is static (no realtime availability)
+    for (const p of results) {
+      expect(p.availableSpots).to.be.null;
+      expect(p.status).to.eql("UNKNOWN");
+    }
+  });
+
+  test("capacity is present", function() {
+    const results = res.getBody().results;
+    for (const p of results) {
+      expect(p.capacity).to.be.greaterThan(0);
+    }
+  });
+
+  test("all results are from toulouse", function() {
+    for (const p of res.getBody().results) {
+      expect(p.cityId).to.eql("toulouse");
+      expect(p.id).to.match(/^toulouse:/);
+    }
+  });
+
+  test("attribution contains toulouse", function() {
+    const attribution = res.getBody().attribution;
+    expect(attribution.length).to.be.greaterThan(0);
+    expect(attribution[0].cityId).to.eql("toulouse");
+  });
+
+  test("results sorted by distance ascending", function() {
+    const results = res.getBody().results;
+    for (let i = 1; i < results.length; i++) {
+      expect(results[i].distanceMeters).to.be.at.least(results[i - 1].distanceMeters);
+    }
+  });
+}

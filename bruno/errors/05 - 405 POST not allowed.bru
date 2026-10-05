@@ -1,0 +1,17 @@
+meta {
+  name: 405 POST not allowed
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=46.58&lon=0.34
+  body: none
+  auth: none
+}
+
+tests {
+  test("status 405", function() {
+    expect(res.status).to.eql(405);
+  });
+}

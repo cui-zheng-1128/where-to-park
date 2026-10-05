@@ -1,0 +1,23 @@
+meta {
+  name: 400 invalid ranking
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=46.58&lon=0.34&ranking=FOO
+  body: none
+  auth: none
+}
+
+tests {
+  test("status 400", function() {
+    expect(res.status).to.eql(400);
+  });
+
+  test("error message mentions ranking", function() {
+    const body = res.getBody();
+    expect(body.message).to.exist;
+    expect(body.message.toLowerCase()).to.include("ranking");
+  });
+}

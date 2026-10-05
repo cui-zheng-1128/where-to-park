@@ -1,0 +1,46 @@
+meta {
+  name: Nantes P+R (realtime availability)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=47.1914&lon=-1.5852&radius=3000&limit=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("status 200 and results present", function() {
+    expect(res.status).to.eql(200);
+    const results = res.getBody().results;
+    expect(results.length).to.be.greaterThan(0);
+  });
+
+  test("realtime availability data present", function() {
+    const results = res.getBody().results;
+    // Nantes P+R provides realtime availability
+    const withAvailability = results.filter(p => p.availableSpots !== null);
+    expect(withAvailability.length).to.be.greaterThan(0);
+  });
+
+  test("data is fresh (< 5 minutes old)", function() {
+    const now = Date.now();
+    for (const p of res.getBody().results) {
+      const updated = new Date(p.sourceUpdatedAt).getTime();
+      const ageMinutes = (now - updated) / 1000 / 60;
+      expect(ageMinutes).to.be.lessThan(5);
+    }
+  });
+
+  test("results are from nantes or nantes-pr", function() {
+    for (const p of res.getBody().results) {
+      expect(p.cityId).to.match(/^nantes(-pr)?$/);
+    }
+  });
+
+  test("attribution present", function() {
+    const attribution = res.getBody().attribution;
+    expect(attribution.length).to.be.greaterThan(0);
+  });
+}

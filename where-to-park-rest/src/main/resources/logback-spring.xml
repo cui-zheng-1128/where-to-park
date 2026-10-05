@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Structured logging. Production emits one JSON object per line (Logstash encoder) so the log pipeline can parse and correlate; local development keeps the human-readable console
+  pattern (activated with the dev Spring profile, the default when run from the IDE).
+-->
+<configuration>
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="where-to-park"/>
+
+    <!-- JSON for log aggregation (default). -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${appName}"}</customFields>
+        </encoder>
+    </appender>
+
+    <!-- Plain, human-readable for local development. -->
+    <appender name="PLAIN_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="PLAIN_CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!dev">
+        <root level="INFO">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

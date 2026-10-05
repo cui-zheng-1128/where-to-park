@@ -1,0 +1,147 @@
+spring:
+  application:
+    name: where-to-park
+  # threads.virtual.enabled: requires JDK 21+; enable when the runtime is upgraded
+  datasource:
+    # Embedded H2 in file mode: survives restarts, zero external service to operate.
+    # Use jdbc:h2:mem:parkings for a throwaway in-memory database instead.
+    url: jdbc:h2:file:./data/parkings;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      # The schema is owned by Flyway migrations; Hibernate never alters it.
+      ddl-auto: none
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  h2:
+    console:
+      # DEV ONLY: the console is a full database admin UI and must never ship to production.
+      # Production overrides it to false in application-prd.yml.
+      enabled: true
+      path: /h2-console
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Probes for K8s/LB; metrics + prometheus for ingestion observability and alerting.
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+parking:
+  # h2 (default, persistent) — the only storage mode
+  storage: h2
+  # Per-client rate limit on the public API (fixed window).
+  rate-limit:
+    enabled: true
+    requests: 120
+    window-seconds: 60
+  ingestion:
+    # Scheduler tick: each connector is polled at most once per its own poll-interval.
+    tick: PT15S
+    # Connector pool size: cities are polled in parallel so one slow source never delays the others.
+    parallelism: 4
+    # Cap on the exponential failure back-off (30 s, 60 s, 120 s, ... up to this).
+    max-backoff: PT5M
+  sources:
+    # --- Real-time sources ---
+    poitiers:
+      enabled: true
+      type: data-fair
+      base-url: https://data.grandpoitiers.fr
+      dataset: mobilites-stationnement-des-parkings-en-temps-reel
+      # The source refreshes every 60 s: polling faster only burns the rate-limit budget.
+      poll-interval: PT60S
+      attribution:
+        source: Grand Poitiers - open data
+        license: Licence Ouverte / Open Licence 2.0
+        url: https://data.grandpoitiers.fr/datasets/mobilites-stationnement-des-parkings-en-temps-reel
+    nantes:
+      enabled: true
+      type: opendatasoft
+      base-url: https://data.nantesmetropole.fr
+      dataset: 244400404_parkings-publics-nantes-disponibilites
+      # Nantes updates in near-real-time; 60 s is a safe poll interval.
+      poll-interval: PT60S
+      attribution:
+        source: Nantes Métropole - Naolib
+        license: Open Database License (ODbL)
+        url: https://data.nantesmetropole.fr/datasets/244400404_parkings-publics-nantes-disponibilites
+      field-mapping:
+        id-field: grp_identifiant
+        name-field: grp_nom
+        lat-field: location.lat
+        lon-field: location.lon
+        capacity-field: grp_exploitation
+        available-spots-field: grp_disponible
+        status-field: grp_statut
+        timestamp-field: grp_horodatage
+        # grp_statut convention: 5 = open for all, 1 = closed, 2 = subscribers only, 0 = invalid (absent → UNKNOWN).
+        status-mapping: { 5: OPEN_OR_FULL, 1: CLOSED, 2: CLOSED }
+    nantes-pr:
+      enabled: true
+      type: opendatasoft
+      base-url: https://data.nantesmetropole.fr
+      dataset: 244400404_parcs-relais-nantes-metropole-disponibilites
+      poll-interval: PT60S
+      attribution:
+        source: Nantes Métropole - Naolib (parkings relais)
+        license: Open Database License (ODbL)
+        url: https://data.nantesmetropole.fr/datasets/244400404_parcs-relais-nantes-metropole-disponibilites
+      field-mapping:
+        id-field: grp_identifiant
+        name-field: grp_nom
+        lat-field: location.lat
+        lon-field: location.lon
+        capacity-field: grp_exploitation
+        available-spots-field: grp_disponible
+        status-field: grp_statut
+        timestamp-field: grp_horodatage
+        # Same grp_statut convention as nantes.
+        status-mapping: { 5: OPEN_OR_FULL, 1: CLOSED, 2: CLOSED }
+
+    # --- Static sources (no real-time availability) ---
+    toulouse:
+      enabled: true
+      type: opendatasoft
+      base-url: https://data.toulouse-metropole.fr
+      dataset: parcs-de-stationnement
+      # Static dataset: rare updates, 5 min is plenty.
+      poll-interval: PT5M
+      attribution:
+        source: Toulouse Métropole - open data
+        license: Licence Ouverte / Open Licence 2.0
+        url: https://data.toulouse-metropole.fr/datasets/parcs-de-stationnement
+      field-mapping:
+        id-field: id
+        name-field: nom
+        lat-field: geo_point_2d.lat
+        lon-field: geo_point_2d.lon
+        capacity-field: nb_places
+        # No real-time availability or status: both stay null/UNKNOWN.
+    paris:
+      enabled: true
+      type: opendatasoft
+      base-url: https://opendata.paris.fr
+      dataset: stationnement-en-ouvrage
+      poll-interval: PT5M
+      attribution:
+        source: Ville de Paris - open data
+        license: Open Database License (ODbL)
+        url: https://opendata.paris.fr/datasets/stationnement-en-ouvrage
+      field-mapping:
+        id-field: id
+        name-field: nom
+        lat-field: geo_point_2d.lat
+        lon-field: geo_point_2d.lon
+        capacity-field: nb_places
+        # No real-time availability or status.

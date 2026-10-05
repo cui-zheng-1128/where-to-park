@@ -1,0 +1,64 @@
+meta {
+  name: Poitiers (realtime availability)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=46.5802&lon=0.3404&radius=2000&limit=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("status 200 and results present", function() {
+    expect(res.status).to.eql(200);
+    const results = res.getBody().results;
+    expect(results.length).to.be.greaterThan(0);
+  });
+
+  test("realtime availability data present", function() {
+    const results = res.getBody().results;
+    // Poitiers provides realtime availability
+    const withAvailability = results.filter(p => p.availableSpots !== null);
+    expect(withAvailability.length).to.be.greaterThan(0);
+
+    // Data Fair status semantics: spots > 0 → OPEN; spots == 0 → FULL only when the
+    // occupancy rate confirms it, else UNKNOWN (the source cannot tell full from closed).
+    for (const p of withAvailability) {
+      expect(["OPEN", "FULL", "UNKNOWN"]).to.include(p.status);
+      if (p.availableSpots > 0) {
+        expect(p.status).to.eql("OPEN");
+      }
+    }
+  });
+
+  test("data is fresh (< 5 minutes old)", function() {
+    const now = Date.now();
+    for (const p of res.getBody().results) {
+      const updated = new Date(p.sourceUpdatedAt).getTime();
+      const ageMinutes = (now - updated) / 1000 / 60;
+      expect(ageMinutes).to.be.lessThan(5);
+    }
+  });
+
+  test("all results are from poitiers", function() {
+    for (const p of res.getBody().results) {
+      expect(p.cityId).to.eql("poitiers");
+      expect(p.id).to.match(/^poitiers:/);
+    }
+  });
+
+  test("attribution contains poitiers", function() {
+    const attribution = res.getBody().attribution;
+    expect(attribution.length).to.be.greaterThan(0);
+    expect(attribution[0].cityId).to.eql("poitiers");
+  });
+
+  test("results sorted by distance ascending", function() {
+    const results = res.getBody().results;
+    for (let i = 1; i < results.length; i++) {
+      expect(results[i].distanceMeters).to.be.at.least(results[i - 1].distanceMeters);
+    }
+  });
+}

@@ -1,0 +1,39 @@
+{
+    "total": 4,
+    "results": [
+        {
+            "Id": 1,
+            "Nom": "NOTRE DAME",
+            "Capacite": 146,
+            "Places": 53,
+            "taux_doccupation": 63.6986301369863,
+            "_geopoint": "46.58349874703973, 0.3450022616476489",
+            "Dernière_mise_à_jour_Base": "2026-09-28T18:37:32.000Z"
+        },
+        {
+            "Id": 3,
+            "Nom": "THEATRE",
+            "Capacite": 320,
+            "Places": 0,
+            "taux_doccupation": 100,
+            "_geopoint": "46.58383455409422, 0.33779491061805567",
+            "Dernière_mise_à_jour_Base": "2026-09-28T18:37:33.000Z"
+        },
+        {
+            "Id": 5,
+            "Nom": "GARE EFFIA",
+            "Capacite": 266,
+            "Places": 128,
+            "taux_doccupation": 51.8,
+            "Dernière_mise_à_jour_Base": "2026-09-28T18:37:31.000Z"
+        },
+        {
+            "Id": 7,
+            "Nom": "PALAIS DE JUSTICE",
+            "Capacite": 208,
+            "Places": 0,
+            "_geopoint": "46.5799, 0.3395",
+            "Dernière_mise_à_jour_Base": "2026-09-28T18:37:30.000Z"
+        }
+    ]
+}

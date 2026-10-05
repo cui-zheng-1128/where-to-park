@@ -1,0 +1,17 @@
+meta {
+  name: 400 lat not a number
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/v1/parkings/nearby?lat=abc&lon=0
+  body: none
+  auth: none
+}
+
+tests {
+  test("status 400", function() {
+    expect(res.status).to.eql(400);
+  });
+}
